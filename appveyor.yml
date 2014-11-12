@@ -1,4 +1,4 @@
-version: 1.2.7.{build}
+version: 0.4.2.{build}
 shallow_clone: true
 
 
@@ -52,9 +52,9 @@ build_script:
   - if [%tbs_tools%]==[mingw] if [%tbs_arch%]==[x86] SET PATH=C:\MinGW\bin;%PATH%
   - if [%tbs_tools%]==[mingw] if [%tbs_arch%]==[x64] SET PATH=C:\mingw64\bin;%PATH%
   
-  - SET zip=zlib-%tbs_tools%-%tbs_arch%.zip
-  - ps: $nupkg_b = "zlib-$($env:tbs_tools)-$($env:tbs_arch)-$($env:APPVEYOR_REPO_BRANCH)";
-  - ps: $nupkg_c = "zlib-$($env:tbs_tools)-$($env:tbs_arch)-$($env:APPVEYOR_REPO_COMMIT)";
+  - SET zip=libwebp-%tbs_tools%-%tbs_arch%.zip
+  - ps: $nupkg_b = "libwebp-$($env:tbs_tools)-$($env:tbs_arch)-$($env:APPVEYOR_REPO_BRANCH)";
+  - ps: $nupkg_c = "libwebp-$($env:tbs_tools)-$($env:tbs_arch)-$($env:APPVEYOR_REPO_COMMIT)";
   
   - thumbs make
   - for /f "tokens=*" %%i in ('thumbs list') do set files=%%i
