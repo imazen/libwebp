@@ -81,34 +81,30 @@ target=
 
 case "$tbs_tools" in
 msvc12)
-  make="nmake //f Makefile.vc CFG=$(lower $tbs_conf)-static OBJDIR=."
-  make+=";nmake //f Makefile.vc CFG=$(lower $tbs_conf)-dynamic OBJDIR=."
+  make="nmake //f Makefile.vc CFG=$(lower $tbs_conf)-static OBJDIR=. $target"
+  make+=";nmake //f Makefile.vc CFG=$(lower $tbs_conf)-dynamic OBJDIR=. $target"
   
   l_slib="./$(lower $tbs_conf)-static/$tbs_arch/lib/libwebp.lib"
   l_dlib="./$(lower $tbs_conf)-dynamic/$tbs_arch/lib/libwebp_dll.lib"
   l_bin="./$(lower $tbs_conf)-dynamic/$tbs_arch/bin/libwebp.dll"
   list="$l_bin $l_slib $l_dlib $l_inc" ;;
   
-#gnu)
-#  cm_tools="Unix Makefiles"
-#  c_flags+=" -fPIC"
-#  make="make $target"
-#  l_slib="./build/libz.a"
-#  l_dlib="./build/libz.so.1.2.7.3"
-#  l_bin="$l_dlib"
-#  list="$l_slib $l_dlib $l_inc" ;;
+gnu)
+  c_flags+=" -fPIC"
+  make="make -f makefile.unix $target"
   
-#mingw)
-#  cm_tools="MinGW Makefiles"
-#  make="mingw32-make $target"
+  l_slib="./src/libwebp.a"
+  l_dlib=""
+  l_bin=""
+  list="$l_slib $l_dlib $l_inc" ;;
   
-  # allow sh in path; some old cmake/mingw bug?
-#  cm_args+=(-DCMAKE_SH=)
+mingw)
+  make="mingw32-make -f makefile.unix $target"
   
-#  l_slib="./build/libzlibstatic.a"
-#  l_dlib="./build/libzlib.dll.a"
-#  l_bin="./build/libzlib.dll"
-#  list="$l_bin $l_slib $l_dlib $l_inc" ;;
+  l_slib="./src/libwebp.a"
+  l_dlib=""
+  l_bin=""
+  list="$l_bin $l_slib $l_dlib $l_inc" ;;
 
 *) echo "Tool config not found for $tbs_tools"
    exit 1 ;;

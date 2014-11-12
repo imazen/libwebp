@@ -12,13 +12,13 @@ environment:
       tbs_tools: "msvc12"
       tbs_static_runtime: 0
     
-    #- tbs_arch: "x86"
-    #  tbs_tools: "mingw"
-    #  tbs_static_runtime: 1
+    - tbs_arch: "x86"
+      tbs_tools: "mingw"
+      tbs_static_runtime: 1
     
-    #- tbs_arch: "x64"
-    #  tbs_tools: "mingw"
-    #  tbs_static_runtime: 1
+    - tbs_arch: "x64"
+      tbs_tools: "mingw"
+      tbs_static_runtime: 1
 
 
 install:
