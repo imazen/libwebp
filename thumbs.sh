@@ -91,17 +91,17 @@ msvc12)
   
 gnu)
   c_flags+=" -fPIC"
-  make="make -f makefile.unix $target"
+  make="make -f makefile.unix src/libwebp.a src/mux/libwebpmux.a"
   
-  l_slib="./src/libwebp.a"
+  l_slib="./src/libwebp.a ./src/mux/libwebpmux.a"
   l_dlib=""
   l_bin=""
   list="$l_slib $l_dlib $l_inc" ;;
   
 mingw)
-  make="mingw32-make -f makefile.unix $target"
+  make="mingw32-make -f makefile.unix src/libwebp.a src/mux/libwebpmux.a"
   
-  l_slib="./src/libwebp.a"
+  l_slib="./src/libwebp.a ./src/mux/libwebpmux.a"
   l_dlib=""
   l_bin=""
   list="$l_bin $l_slib $l_dlib $l_inc" ;;
