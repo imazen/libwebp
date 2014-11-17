@@ -74,19 +74,19 @@ list=
 make=
 c_flags=
 
-target=
-[ $2 ] && target=$2
+#target=
+#[ $2 ] && target=$2
 
 # -----------
 
 case "$tbs_tools" in
 msvc12)
-  make="nmake //f Makefile.vc CFG=$(lower $tbs_conf)-static OBJDIR=. $target"
-  make+=";nmake //f Makefile.vc CFG=$(lower $tbs_conf)-dynamic OBJDIR=. $target"
+  make="nmake //f Makefile.vc CFG=$(lower $tbs_conf)-static OBJDIR=. all"
+  make+=";nmake //f Makefile.vc CFG=$(lower $tbs_conf)-dynamic OBJDIR=. all"
   
-  l_slib="./$(lower $tbs_conf)-static/$tbs_arch/lib/libwebp.lib"
-  l_dlib="./$(lower $tbs_conf)-dynamic/$tbs_arch/lib/libwebp_dll.lib"
-  l_bin="./$(lower $tbs_conf)-dynamic/$tbs_arch/bin/libwebp.dll"
+  l_slib="./$(lower $tbs_conf)-static/$tbs_arch/lib/libwebp.lib ./$(lower $tbs_conf)-static/$tbs_arch/lib/libwebpmux.lib ./$(lower $tbs_conf)-static/$tbs_arch/lib/libwebpdemux.lib ./$(lower $tbs_conf)-static/$tbs_arch/lib/libwebpdecoder.lib"
+  l_dlib="./$(lower $tbs_conf)-dynamic/$tbs_arch/lib/libwebp_dll.lib ./$(lower $tbs_conf)-dynamic/$tbs_arch/lib/libwebpmux_dll.lib ./$(lower $tbs_conf)-dynamic/$tbs_arch/lib/libwebpdemux_dll.lib ./$(lower $tbs_conf)-dynamic/$tbs_arch/lib/libwebpdecoder_dll.lib"
+  l_bin="./$(lower $tbs_conf)-dynamic/$tbs_arch/bin/libwebp.dll ./$(lower $tbs_conf)-dynamic/$tbs_arch/bin/libwebpmux.dll ./$(lower $tbs_conf)-dynamic/$tbs_arch/bin/libwebpdemux.dll ./$(lower $tbs_conf)-dynamic/$tbs_arch/bin/libwebpdecoder.dll"
   list="$l_bin $l_slib $l_dlib $l_inc" ;;
   
 gnu)
