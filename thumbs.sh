@@ -91,17 +91,17 @@ msvc12)
   
 gnu)
   c_flags+=" -fPIC"
-  make="make -f makefile.unix src/libwebp.a src/mux/libwebpmux.a"
+  make="make -f makefile.unix src/libwebp.a src/mux/libwebpmux.a src/demux/libwebpdemux.a src/libwebpdecoder.a"
   
-  l_slib="./src/libwebp.a ./src/mux/libwebpmux.a"
+  l_slib="./src/libwebp.a ./src/mux/libwebpmux.a ./src/demux/libwebpdemux.a ./src/libwebpdecoder.a"
   l_dlib=""
   l_bin=""
   list="$l_slib $l_dlib $l_inc" ;;
   
 mingw)
-  make="mingw32-make -f makefile.unix src/libwebp.a src/mux/libwebpmux.a"
+  make="mingw32-make -f makefile.unix src/libwebp.a src/mux/libwebpmux.a src/demux/libwebpdemux.a src/libwebpdecoder.a"
   
-  l_slib="./src/libwebp.a ./src/mux/libwebpmux.a"
+  l_slib="./src/libwebp.a ./src/mux/libwebpmux.a ./src/demux/libwebpdemux.a ./src/libwebpdecoder.a"
   l_dlib=""
   l_bin=""
   list="$l_bin $l_slib $l_dlib $l_inc" ;;
@@ -149,6 +149,9 @@ check)
   cd .. ;;
   
 clean)
+  find . -name "*.o" -type f | xargs rm -f
+  find . -name "*.a" -type f | xargs rm -f
+  find . -name "*.exe" -type f | xargs rm -f
   rm -rf debug-dynamic
   rm -rf debug-static
   rm -rf release-dynamic
