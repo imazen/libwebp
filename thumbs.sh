@@ -133,12 +133,8 @@ fi
 
 case "$1" in
 make)
-  export CFLAGS=$c_flags
-  export ARCH=$tbs_arch
-  
-  fsx=
-  [ $tbs_tools = gnu ] || fsx=_$(upper $tbs_conf)
-  cm_args+=(-DCMAKE_C_FLAGS$fsx="$c_flags")
+  export EXTRA_FLAGS="$c_flags"
+  export ARCH="$tbs_arch"
   
   eval $make || exit 1
   cd .. ;;
