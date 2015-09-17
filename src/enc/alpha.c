@@ -15,6 +15,7 @@
 #include <stdlib.h>
 
 #include "./vp8enci.h"
+#include "../dsp/dsp.h"
 #include "../utils/filters.h"
 #include "../utils/quant_levels.h"
 #include "../utils/utils.h"
@@ -73,7 +74,11 @@ static int EncodeLossless(const uint8_t* const data, int width, int height,
   config.quality = 8.f * effort_level;
   assert(config.quality >= 0 && config.quality <= 100.f);
 
-  ok = (VP8LEncodeStream(&config, &picture, bw) == VP8_ENC_OK);
+  // TODO(urvang): Temporary fix to avoid generating images that trigger
+  // a decoder bug related to alpha with color cache.
+  // See: https://code.google.com/p/webp/issues/detail?id=239
+  // Need to re-enable this later.
+  ok = (VP8LEncodeStream(&config, &picture, bw, 0 /*use_cache*/) == VP8_ENC_OK);
   WebPPictureFree(&picture);
   ok = ok && !bw->error_;
   if (!ok) {
@@ -208,8 +213,9 @@ static uint32_t GetFilterMap(const uint8_t* alpha, int width, int height,
     const int kMaxColorsForFilterNone = 192;
     const int num_colors = GetNumColors(alpha, width, height, width);
     // For low number of colors, NONE yields better compression.
-    filter = (num_colors <= kMinColorsForFilterNone) ? WEBP_FILTER_NONE :
-             EstimateBestFilter(alpha, width, height, width);
+    filter = (num_colors <= kMinColorsForFilterNone)
+        ? WEBP_FILTER_NONE
+        : WebPEstimateBestFilter(alpha, width, height, width);
     bit_map |= 1 << filter;
     // For large number of colors, try FILTER_NONE in addition to the best
     // filter as well.
@@ -240,6 +246,7 @@ static int ApplyFiltersAndEncode(const uint8_t* alpha, int width, int height,
   uint32_t try_map =
       GetFilterMap(alpha, width, height, filter, effort_level);
   InitFilterTrial(&best);
+
   if (try_map != FILTER_TRY_NONE) {
     uint8_t* filtered_alpha =  (uint8_t*)WebPSafeMalloc(1ULL, data_size);
     if (filtered_alpha == NULL) return 0;
@@ -264,7 +271,16 @@ static int ApplyFiltersAndEncode(const uint8_t* alpha, int width, int height,
                              reduce_levels, effort_level, NULL, &best);
   }
   if (ok) {
-    if (stats != NULL) *stats = best.stats;
+    if (stats != NULL) {
+      stats->lossless_features = best.stats.lossless_features;
+      stats->histogram_bits = best.stats.histogram_bits;
+      stats->transform_bits = best.stats.transform_bits;
+      stats->cache_bits = best.stats.cache_bits;
+      stats->palette_size = best.stats.palette_size;
+      stats->lossless_size = best.stats.lossless_size;
+      stats->lossless_hdr_size = best.stats.lossless_hdr_size;
+      stats->lossless_data_size = best.stats.lossless_data_size;
+    }
     *output_size = VP8BitWriterSize(&best.bw);
     *output = VP8BitWriterBuf(&best.bw);
   } else {
@@ -326,6 +342,7 @@ static int EncodeAlpha(VP8Encoder* const enc,
   }
 
   if (ok) {
+    VP8FiltersInit();
     ok = ApplyFiltersAndEncode(quant_alpha, width, height, data_size, method,
                                filter, reduce_levels, effort_level, output,
                                output_size, pic->stats);

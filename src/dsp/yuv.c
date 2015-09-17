@@ -120,11 +120,16 @@ void WebPSamplerProcessPlane(const uint8_t* y, int y_stride,
 
 WebPSamplerRowFunc WebPSamplers[MODE_LAST];
 
-extern WEBP_TSAN_IGNORE_FUNCTION void WebPInitSamplersSSE2(void);
-extern WEBP_TSAN_IGNORE_FUNCTION void WebPInitSamplersMIPS32(void);
-extern WEBP_TSAN_IGNORE_FUNCTION void WebPInitSamplersMIPSdspR2(void);
+extern void WebPInitSamplersSSE2(void);
+extern void WebPInitSamplersMIPS32(void);
+extern void WebPInitSamplersMIPSdspR2(void);
+
+static volatile VP8CPUInfo yuv_last_cpuinfo_used =
+    (VP8CPUInfo)&yuv_last_cpuinfo_used;
 
 WEBP_TSAN_IGNORE_FUNCTION void WebPInitSamplers(void) {
+  if (yuv_last_cpuinfo_used == VP8GetCPUInfo) return;
+
   WebPSamplers[MODE_RGB]       = YuvToRgbRow;
   WebPSamplers[MODE_RGBA]      = YuvToRgbaRow;
   WebPSamplers[MODE_BGR]       = YuvToBgrRow;
@@ -155,6 +160,7 @@ WEBP_TSAN_IGNORE_FUNCTION void WebPInitSamplers(void) {
     }
 #endif  // WEBP_USE_MIPS_DSP_R2
   }
+  yuv_last_cpuinfo_used = VP8GetCPUInfo;
 }
 
 //-----------------------------------------------------------------------------

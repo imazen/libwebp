@@ -32,9 +32,9 @@ static const int16_t kC2 = 17734;  // half of kC2, actually. See comment above.
 
 // This code works but is *slower* than the inlined-asm version below
 // (with gcc-4.6). So we disable it for now. Later, it'll be conditional to
-// USE_INTRINSICS define.
+// WEBP_USE_INTRINSICS define.
 // With gcc-4.8, it's a little faster speed than inlined-assembly.
-#if defined(USE_INTRINSICS)
+#if defined(WEBP_USE_INTRINSICS)
 
 // Treats 'v' as an uint8x8_t and zero extends to an int16x8_t.
 static WEBP_INLINE int16x8_t ConvertU8ToS16(uint32x2_t v) {
@@ -241,7 +241,7 @@ static void ITransformOne(const uint8_t* ref,
   );
 }
 
-#endif    // USE_INTRINSICS
+#endif    // WEBP_USE_INTRINSICS
 
 static void ITransform(const uint8_t* ref,
                        const int16_t* in, uint8_t* dst, int do_two) {
@@ -263,7 +263,7 @@ static uint8x16_t Load4x4(const uint8_t* src) {
 
 // Forward transform.
 
-#if defined(USE_INTRINSICS)
+#if defined(WEBP_USE_INTRINSICS)
 
 static WEBP_INLINE void Transpose4x4_S16(const int16x4_t A, const int16x4_t B,
                                          const int16x4_t C, const int16x4_t D,
@@ -727,6 +727,7 @@ static void CollectHistogram(const uint8_t* ref, const uint8_t* pred,
                              VP8Histogram* const histo) {
   const uint16x8_t max_coeff_thresh = vdupq_n_u16(MAX_COEFF_THRESH);
   int j;
+  int distribution[MAX_COEFF_THRESH + 1] = { 0 };
   for (j = start_block; j < end_block; ++j) {
     int16_t out[16];
     FTransform(ref + VP8DspScan[j], pred + VP8DspScan[j], out);
@@ -744,10 +745,11 @@ static void CollectHistogram(const uint8_t* ref, const uint8_t* pred,
       vst1q_s16(out + 8, vreinterpretq_s16_u16(b3));
       // Convert coefficients to bin.
       for (k = 0; k < 16; ++k) {
-        histo->distribution[out[k]]++;
+        ++distribution[out[k]];
       }
     }
   }
+  VP8SetHistogramData(distribution, histo);
 }
 
 //------------------------------------------------------------------------------
@@ -854,8 +856,10 @@ static int QuantizeBlock(int16_t in[16], int16_t out[16],
   const int16x8_t out0 = Quantize(in, mtx, 0);
   const int16x8_t out1 = Quantize(in, mtx, 8);
   uint8x8x4_t shuffles;
-  // vtbl4_u8 is marked unavailable for iOS arm64, use wider versions there.
-#if defined(__APPLE__) && defined(__aarch64__)
+  // vtbl?_u8 are marked unavailable for iOS arm64 with Xcode < 6.3, use
+  // non-standard versions there.
+#if defined(__APPLE__) && defined(__aarch64__) && \
+    defined(__apple_build_version__) && (__apple_build_version__< 6020037)
   uint8x16x2_t all_out;
   INIT_VECTOR2(all_out, vreinterpretq_u8_s16(out0), vreinterpretq_u8_s16(out1));
   INIT_VECTOR4(shuffles,
@@ -899,15 +903,12 @@ static int Quantize2Blocks(int16_t in[32], int16_t out[32],
 
 #endif   // !WORK_AROUND_GCC
 
-#endif   // WEBP_USE_NEON
-
 //------------------------------------------------------------------------------
 // Entry point
 
-extern WEBP_TSAN_IGNORE_FUNCTION void VP8EncDspInitNEON(void);
+extern void VP8EncDspInitNEON(void);
 
 WEBP_TSAN_IGNORE_FUNCTION void VP8EncDspInitNEON(void) {
-#if defined(WEBP_USE_NEON)
   VP8ITransform = ITransform;
   VP8FTransform = FTransform;
 
@@ -924,5 +925,10 @@ WEBP_TSAN_IGNORE_FUNCTION void VP8EncDspInitNEON(void) {
   VP8EncQuantizeBlock = QuantizeBlock;
   VP8EncQuantize2Blocks = Quantize2Blocks;
 #endif
-#endif   // WEBP_USE_NEON
 }
+
+#else  // !WEBP_USE_NEON
+
+WEBP_DSP_INIT_STUB(VP8EncDspInitNEON)
+
+#endif  // WEBP_USE_NEON

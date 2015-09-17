@@ -421,12 +421,12 @@ static int AllocateAndInitRescaler(VP8LDecoder* const dec, VP8Io* const io) {
   const int out_height = io->scaled_height;
   const uint64_t work_size = 2 * num_channels * (uint64_t)out_width;
   int32_t* work;        // Rescaler work area.
-  const uint64_t scaled_data_size = num_channels * (uint64_t)out_width;
+  const uint64_t scaled_data_size = (uint64_t)out_width;
   uint32_t* scaled_data;  // Temporary storage for scaled BGRA data.
   const uint64_t memory_size = sizeof(*dec->rescaler) +
                                work_size * sizeof(*work) +
                                scaled_data_size * sizeof(*scaled_data);
-  uint8_t* memory = (uint8_t*)WebPSafeCalloc(memory_size, sizeof(*memory));
+  uint8_t* memory = (uint8_t*)WebPSafeMalloc(memory_size, sizeof(*memory));
   if (memory == NULL) {
     dec->status_ = VP8_STATUS_OUT_OF_MEMORY;
     return 0;
@@ -441,8 +441,7 @@ static int AllocateAndInitRescaler(VP8LDecoder* const dec, VP8Io* const io) {
   scaled_data = (uint32_t*)memory;
 
   WebPRescalerInit(dec->rescaler, in_width, in_height, (uint8_t*)scaled_data,
-                   out_width, out_height, 0, num_channels,
-                   in_width, out_width, in_height, out_height, work);
+                   out_width, out_height, 0, num_channels, work);
   return 1;
 }
 
@@ -961,7 +960,7 @@ static int DecodeAlphaData(VP8LDecoder* const dec, uint8_t* const data,
     dec->status_ = br->eos_ ? VP8_STATUS_SUSPENDED
                             : VP8_STATUS_BITSTREAM_ERROR;
   } else {
-    dec->last_pixel_ = (int)pos;
+    dec->last_pixel_ = pos;
   }
   return ok;
 }
@@ -1073,12 +1072,13 @@ static int DecodeImageData(VP8LDecoder* const dec, uint32_t* const data,
           process_func(dec, row);
         }
       }
-      if (src < src_last) {
-        if (col & mask) htree_group = GetHtreeGroupForPos(hdr, col, row);
-        if (color_cache != NULL) {
-          while (last_cached < src) {
-            VP8LColorCacheInsert(color_cache, *last_cached++);
-          }
+      // Because of the check done above (before 'src' was incremented by
+      // 'length'), the following holds true.
+      assert(src <= src_end);
+      if (col & mask) htree_group = GetHtreeGroupForPos(hdr, col, row);
+      if (color_cache != NULL) {
+        while (last_cached < src) {
+          VP8LColorCacheInsert(color_cache, *last_cached++);
         }
       }
     } else if (code < color_cache_limit) {  // Color cache

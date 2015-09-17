@@ -7,7 +7,7 @@
 // be found in the AUTHORS file in the root of the source tree.
 // -----------------------------------------------------------------------------
 //
-// Speed-critical decoding functions.
+// Speed-critical decoding functions, default plain-C implementations.
 //
 // Author: Skal (pascal.massimino@gmail.com)
 
@@ -233,6 +233,8 @@ static void DC16NoTopLeft(uint8_t* dst) {  // DC with no top and left samples
   Put16(0x80, dst);
 }
 
+VP8PredFunc VP8PredLuma16[NUM_B_DC_MODES];
+
 //------------------------------------------------------------------------------
 // 4x4
 
@@ -396,6 +398,8 @@ static void HD4(uint8_t* dst) {  // Horizontal-Down
 #undef AVG3
 #undef AVG2
 
+VP8PredFunc VP8PredLuma4[NUM_BMODES];
+
 //------------------------------------------------------------------------------
 // Chroma
 
@@ -453,20 +457,7 @@ static void DC8uvNoTopLeft(uint8_t* dst) {    // DC with nothing
   Put8x8uv(0x80, dst);
 }
 
-//------------------------------------------------------------------------------
-// default C implementations
-
-VP8PredFunc VP8PredLuma4[NUM_BMODES];
-
-const VP8PredFunc VP8PredLuma16[NUM_B_DC_MODES] = {
-  DC16, TM16, VE16, HE16,
-  DC16NoTop, DC16NoLeft, DC16NoTopLeft
-};
-
-const VP8PredFunc VP8PredChroma8[NUM_B_DC_MODES] = {
-  DC8uv, TM8uv, VE8uv, HE8uv,
-  DC8uvNoTop, DC8uvNoLeft, DC8uvNoTopLeft
-};
+VP8PredFunc VP8PredChroma8[NUM_B_DC_MODES];
 
 //------------------------------------------------------------------------------
 // Edge filtering functions
@@ -683,11 +674,17 @@ VP8SimpleFilterFunc VP8SimpleVFilter16i;
 VP8SimpleFilterFunc VP8SimpleHFilter16i;
 
 extern void VP8DspInitSSE2(void);
+extern void VP8DspInitSSE41(void);
 extern void VP8DspInitNEON(void);
 extern void VP8DspInitMIPS32(void);
 extern void VP8DspInitMIPSdspR2(void);
 
+static volatile VP8CPUInfo dec_last_cpuinfo_used =
+    (VP8CPUInfo)&dec_last_cpuinfo_used;
+
 WEBP_TSAN_IGNORE_FUNCTION void VP8DspInit(void) {
+  if (dec_last_cpuinfo_used == VP8GetCPUInfo) return;
+
   VP8InitClipTables();
 
   VP8TransformWHT = TransformWHT;
@@ -721,11 +718,32 @@ WEBP_TSAN_IGNORE_FUNCTION void VP8DspInit(void) {
   VP8PredLuma4[8] = HD4;
   VP8PredLuma4[9] = HU4;
 
+  VP8PredLuma16[0] = DC16;
+  VP8PredLuma16[1] = TM16;
+  VP8PredLuma16[2] = VE16;
+  VP8PredLuma16[3] = HE16;
+  VP8PredLuma16[4] = DC16NoTop;
+  VP8PredLuma16[5] = DC16NoLeft;
+  VP8PredLuma16[6] = DC16NoTopLeft;
+
+  VP8PredChroma8[0] = DC8uv;
+  VP8PredChroma8[1] = TM8uv;
+  VP8PredChroma8[2] = VE8uv;
+  VP8PredChroma8[3] = HE8uv;
+  VP8PredChroma8[4] = DC8uvNoTop;
+  VP8PredChroma8[5] = DC8uvNoLeft;
+  VP8PredChroma8[6] = DC8uvNoTopLeft;
+
   // If defined, use CPUInfo() to overwrite some pointers with faster versions.
   if (VP8GetCPUInfo != NULL) {
 #if defined(WEBP_USE_SSE2)
     if (VP8GetCPUInfo(kSSE2)) {
       VP8DspInitSSE2();
+#if defined(WEBP_USE_SSE41)
+      if (VP8GetCPUInfo(kSSE4_1)) {
+        VP8DspInitSSE41();
+      }
+#endif
     }
 #endif
 #if defined(WEBP_USE_NEON)
@@ -744,5 +762,5 @@ WEBP_TSAN_IGNORE_FUNCTION void VP8DspInit(void) {
     }
 #endif
   }
+  dec_last_cpuinfo_used = VP8GetCPUInfo;
 }
-

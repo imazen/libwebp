@@ -22,6 +22,7 @@
 
 #ifdef WEBP_HAVE_PNG
 #include <png.h>
+#include <setjmp.h>   // note: this must be included *after* png.h
 #endif
 
 #ifdef HAVE_WINCODEC_H
@@ -192,8 +193,8 @@ static int WritePNG(FILE* out_file, const WebPDecBuffer* const buffer) {
   uint8_t* const rgb = buffer->u.RGBA.rgba;
   const int stride = buffer->u.RGBA.stride;
   const int has_alpha = (buffer->colorspace == MODE_RGBA);
-  png_structp png;
-  png_infop info;
+  volatile png_structp png;
+  volatile png_infop info;
   png_uint_32 y;
 
   png = png_create_write_struct(PNG_LIBPNG_VER_STRING,
@@ -203,11 +204,11 @@ static int WritePNG(FILE* out_file, const WebPDecBuffer* const buffer) {
   }
   info = png_create_info_struct(png);
   if (info == NULL) {
-    png_destroy_write_struct(&png, NULL);
+    png_destroy_write_struct((png_structpp)&png, NULL);
     return 0;
   }
   if (setjmp(png_jmpbuf(png))) {
-    png_destroy_write_struct(&png, &info);
+    png_destroy_write_struct((png_structpp)&png, (png_infopp)&info);
     return 0;
   }
   png_init_io(png, out_file);
@@ -221,7 +222,7 @@ static int WritePNG(FILE* out_file, const WebPDecBuffer* const buffer) {
     png_write_rows(png, &row, 1);
   }
   png_write_end(png, info);
-  png_destroy_write_struct(&png, &info);
+  png_destroy_write_struct((png_structpp)&png, (png_infopp)&info);
   return 1;
 }
 #else    // !HAVE_WINCODEC_H && !WEBP_HAVE_PNG
@@ -244,10 +245,10 @@ static int WritePPM(FILE* fout, const WebPDecBuffer* const buffer, int alpha) {
   uint32_t y;
 
   if (alpha) {
-    fprintf(fout, "P7\nWIDTH %d\nHEIGHT %d\nDEPTH 4\nMAXVAL 255\n"
+    fprintf(fout, "P7\nWIDTH %u\nHEIGHT %u\nDEPTH 4\nMAXVAL 255\n"
                   "TUPLTYPE RGB_ALPHA\nENDHDR\n", width, height);
   } else {
-    fprintf(fout, "P6\n%d %d\n255\n", width, height);
+    fprintf(fout, "P6\n%u %u\n255\n", width, height);
   }
   for (y = 0; y < height; ++y) {
     if (fwrite(rgb + y * stride, width, bytes_per_px, fout) != bytes_per_px) {
@@ -404,7 +405,7 @@ static int WriteAlphaPlane(FILE* fout, const WebPDecBuffer* const buffer) {
   const int a_stride = buffer->u.YUVA.a_stride;
   uint32_t y;
   assert(a != NULL);
-  fprintf(fout, "P5\n%d %d\n255\n", width, height);
+  fprintf(fout, "P5\n%u %u\n255\n", width, height);
   for (y = 0; y < height; ++y) {
     if (fwrite(a + y * a_stride, width, 1, fout) != 1) {
       return 0;
@@ -548,12 +549,13 @@ static void Help(void) {
          "  -alpha_dither  use alpha-plane dithering if needed\n"
          "  -mt .......... use multi-threading\n"
          "  -crop <x> <y> <w> <h> ... crop output with the given rectangle\n"
-         "  -scale <w> <h> .......... scale the output (*after* any cropping)\n"
+         "  -resize <w> <h> ......... scale the output (*after* any cropping)\n"
          "  -flip ........ flip the output vertically\n"
          "  -alpha ....... only save the alpha plane\n"
          "  -incremental . use incremental decoding (useful for tests)\n"
          "  -h     ....... this help message\n"
          "  -v     ....... verbose (e.g. print encoding/decoding times)\n"
+         "  -quiet ....... quiet mode, don't print anything\n"
 #ifndef WEBP_DLL
          "  -noasm ....... disable all assembly optimizations\n"
 #endif
@@ -568,6 +570,7 @@ int main(int argc, const char *argv[]) {
   int ok = 0;
   const char *in_file = NULL;
   const char *out_file = NULL;
+  int quiet = 0;
 
   WebPDecoderConfig config;
   WebPDecBuffer* const output_buffer = &config.output;
@@ -602,6 +605,8 @@ int main(int argc, const char *argv[]) {
       format = BMP;
     } else if (!strcmp(argv[c], "-tiff")) {
       format = TIFF;
+    } else if (!strcmp(argv[c], "-quiet")) {
+      quiet = 1;
     } else if (!strcmp(argv[c], "-version")) {
       const int version = WebPGetDecoderVersion();
       printf("%d.%d.%d\n",
@@ -626,7 +631,8 @@ int main(int argc, const char *argv[]) {
       config.options.crop_top    = ExUtilGetInt(argv[++c], 0, &parse_error);
       config.options.crop_width  = ExUtilGetInt(argv[++c], 0, &parse_error);
       config.options.crop_height = ExUtilGetInt(argv[++c], 0, &parse_error);
-    } else if (!strcmp(argv[c], "-scale") && c < argc - 2) {
+    } else if ((!strcmp(argv[c], "-scale") || !strcmp(argv[c], "-resize")) &&
+               c < argc - 2) {  // '-scale' is left for compatibility
       config.options.use_scaling = 1;
       config.options.scaled_width  = ExUtilGetInt(argv[++c], 0, &parse_error);
       config.options.scaled_height = ExUtilGetInt(argv[++c], 0, &parse_error);
@@ -662,6 +668,8 @@ int main(int argc, const char *argv[]) {
     Help();
     return -1;
   }
+
+  if (quiet) verbose = 0;
 
   {
     VP8StatusCode status = VP8_STATUS_OK;
@@ -719,20 +727,24 @@ int main(int argc, const char *argv[]) {
   }
 
   if (out_file != NULL) {
-    fprintf(stderr, "Decoded %s. Dimensions: %d x %d %s. Format: %s. "
-                    "Now saving...\n",
-            in_file, output_buffer->width, output_buffer->height,
-            bitstream->has_alpha ? " (with alpha)" : "",
-            kFormatType[bitstream->format]);
+    if (!quiet) {
+      fprintf(stderr, "Decoded %s. Dimensions: %d x %d %s. Format: %s. "
+                      "Now saving...\n",
+              in_file, output_buffer->width, output_buffer->height,
+              bitstream->has_alpha ? " (with alpha)" : "",
+              kFormatType[bitstream->format]);
+    }
     ok = SaveOutput(output_buffer, format, out_file);
   } else {
-    fprintf(stderr, "File %s can be decoded "
-                    "(dimensions: %d x %d %s. Format: %s).\n",
-            in_file, output_buffer->width, output_buffer->height,
-            bitstream->has_alpha ? " (with alpha)" : "",
-            kFormatType[bitstream->format]);
-    fprintf(stderr, "Nothing written; "
-                    "use -o flag to save the result as e.g. PNG.\n");
+    if (!quiet) {
+      fprintf(stderr, "File %s can be decoded "
+                      "(dimensions: %d x %d %s. Format: %s).\n",
+              in_file, output_buffer->width, output_buffer->height,
+              bitstream->has_alpha ? " (with alpha)" : "",
+              kFormatType[bitstream->format]);
+      fprintf(stderr, "Nothing written; "
+                      "use -o flag to save the result as e.g. PNG.\n");
+    }
   }
  Exit:
   WebPFreeDecBuffer(output_buffer);
