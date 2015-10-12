@@ -1,15 +1,16 @@
-version: 0.4.2.{build}
+version: 0.4.3.{build}
 shallow_clone: true
+os: Visual Studio 2015
 
 
 environment:
   matrix:
     - tbs_arch: "x86"
-      tbs_tools: "msvc12"
+      tbs_tools: "msvc14"
       tbs_static_runtime: 0
     
     - tbs_arch: "x64"
-      tbs_tools: "msvc12"
+      tbs_tools: "msvc14"
       tbs_static_runtime: 0
     
     - tbs_arch: "x86"
@@ -48,7 +49,7 @@ install:
 
 
 build_script:
-  - '"C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall" %vcvar_arg%'
+  - '"C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall" %vcvar_arg%'
   - if [%tbs_tools%]==[mingw] if [%tbs_arch%]==[x86] SET PATH=C:\MinGW\bin;%PATH%
   - if [%tbs_tools%]==[mingw] if [%tbs_arch%]==[x64] SET PATH=C:\mingw64\bin;%PATH%
   
