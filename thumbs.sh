@@ -10,9 +10,9 @@
 # ./thumbs.sh make
 
 
-# On Win (msvc 2013):
-# C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\vcvarsall x86_amd64
-# SET tbs_tools=msvc12
+# On Win (msvc 2015):
+# C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall x86_amd64
+# SET tbs_tools=msvc14
 # thumbs make
 
 # On Win (mingw32):
@@ -80,7 +80,7 @@ c_flags=
 # -----------
 
 case "$tbs_tools" in
-msvc12)
+msvc14)
   make="nmake //f Makefile.vc CFG=$(lower $tbs_conf)-static OBJDIR=. all"
   make+=";nmake //f Makefile.vc CFG=$(lower $tbs_conf)-dynamic OBJDIR=. all"
   
@@ -126,7 +126,7 @@ esac
 
 if [ $tbs_static_runtime -gt 0 ]
 then
-  [ $tbs_tools = msvc12 ] && c_flags+=" /MT"
+  [ $tbs_tools = msvc14 ] && c_flags+=" /MT"
 fi
 
 # -----------
