@@ -15,8 +15,8 @@ set git_usrbin=%cd%
 popd
 set path=%bashdir%;%path%
 
-
-if exist "%git_usrbin%\link.exe" echo Rename "%git_usrbin%\link.exe" before continuing or build will fail. && exit /B
+echo Deleting "%git_usrbin%\link.exe"
+if exist "%git_usrbin%\link.exe" del /f "%git_usrbin%\link.exe"
 
 
 
