@@ -24,7 +24,7 @@ build_script:
   - SET zip=libwebp-%tbs_tools%-%tbs_arch%.zip
   - ps: $nupkg_b = "libwebp-$($env:tbs_tools)-$($env:tbs_arch)-$($env:APPVEYOR_REPO_BRANCH)";
   - ps: $nupkg_c = "libwebp-$($env:tbs_tools)-$($env:tbs_arch)-$($env:APPVEYOR_REPO_COMMIT)";
-  - 7z a %zip% release-dynamic/%tbs_arch%/bin/libwebp.dll
+  - 7z a %zip% output/release-dynamic/%tbs_arch%/bin/libwebp.dll
   - appveyor PushArtifact %zip%
   
   - ps: if(Test-Path $env:zip) {
