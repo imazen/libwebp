@@ -9,7 +9,7 @@ environment:
     
     - tbs_arch: "x64"
       tbs_tools: "msvc14"
-      vccar_arg: "x86_amd64"
+      vcvar_arg: "x86_amd64"
     
 
 install:
@@ -18,6 +18,7 @@ install:
   - ps: . .\gd-appveyor-helpers\appveyor_funcs.ps1
 
 build_script:
+  - echo using %vcvar_arg% 
   - '"C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall" %vcvar_arg%'
   - nmake /f Makefile.vc CFG=release-dynamic RTLIBCFG=dynamic OBJDIR=output
 
