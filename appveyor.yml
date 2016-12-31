@@ -9,7 +9,7 @@ environment:
     
     - tbs_arch: "x64"
       tbs_tools: "msvc14"
-      vccar_arg: "x86_64"
+      vccar_arg: "x86_amd64"
     
 
 install:
