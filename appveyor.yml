@@ -1,0 +1,38 @@
+version: 0.5.2.{build}
+shallow_clone: true
+os: Visual Studio 2015
+environment:
+  matrix:
+    - tbs_arch: "x86"
+      tbs_tools: "msvc14"
+      vcvar_arg: "x86"
+    
+    - tbs_arch: "x64"
+      tbs_tools: "msvc14"
+      vcvar_arg: "x86_amd64"
+    
+
+install:
+  # get common functions
+  - git clone https://github.com/imazen/gd-appveyor-helpers
+  - ps: . .\gd-appveyor-helpers\appveyor_funcs.ps1
+
+build_script:
+  - echo using %vcvar_arg% 
+  - '"C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall" %vcvar_arg%'
+  - nmake /f Makefile.vc CFG=release-dynamic RTLIBCFG=dynamic OBJDIR=output
+
+  - SET zip=libwebp-%tbs_tools%-%tbs_arch%.zip
+  - ps: $nupkg_b = "libwebp-$($env:tbs_tools)-$($env:tbs_arch)-$($env:APPVEYOR_REPO_BRANCH)";
+  - ps: $nupkg_c = "libwebp-$($env:tbs_tools)-$($env:tbs_arch)-$($env:APPVEYOR_REPO_COMMIT)";
+  - 7z a %zip% output/release-dynamic/%tbs_arch%/bin/libwebp.dll
+  - appveyor PushArtifact %zip%
+  
+  - ps: if(Test-Path $env:zip) {
+          zip2nuget $env:zip $nupkg_b;
+          zip2nuget $env:zip $nupkg_c; }
+
+
+on_success:
+  - ps: Push-AppveyorArtifact "$nupkg_b*.nupkg"
+  - ps: Push-AppveyorArtifact "$nupkg_c*.nupkg"
